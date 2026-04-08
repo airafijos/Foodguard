@@ -1,0 +1,874 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#080d08">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="FoodGuard">
+<title>FoodGuard — Ingredient Scanner</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#080d08;--surf:#0e1a0e;--surf2:#142014;--border:#1e301e;
+  --green:#22c55e;--gdim:#16a34a;--gglow:rgba(34,197,94,.15);
+  --yellow:#eab308;--yglow:rgba(234,179,8,.15);
+  --red:#ef4444;--rglow:rgba(239,68,68,.18);
+  --blue:#38bdf8;
+  --text:#e8f5e8;--dim:#6b8f6b;--muted:#3d5c3d;
+  --mono:'Space Mono',monospace;--sans:'Syne',sans-serif;--r:16px;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{width:100%;height:100%;background:var(--bg);color:var(--text);font-family:var(--sans);overflow:hidden;overscroll-behavior:none}
+#app{display:flex;flex-direction:column;height:100dvh;max-width:480px;margin:0 auto;position:relative;overflow:hidden}
+.screen{display:none;flex-direction:column;height:100%;animation:fi .3s ease}
+.screen.active{display:flex}
+@keyframes fi{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+
+/* HEADER */
+.hdr{display:flex;align-items:center;justify-content:space-between;padding:14px 20px 12px;border-bottom:1px solid var(--border);flex-shrink:0;background:var(--bg);z-index:10}
+.logo{display:flex;align-items:center;gap:10px}
+.logo-i{width:34px;height:34px;background:linear-gradient(135deg,var(--gdim),var(--green));border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:17px;box-shadow:0 0 16px var(--gglow)}
+.logo-t{font-weight:800;font-size:17px;letter-spacing:-.5px}.logo-t span{color:var(--green)}
+.pill{font-family:var(--mono);font-size:9px;padding:4px 10px;border-radius:100px;border:1px solid var(--border);color:var(--dim);letter-spacing:.05em;white-space:nowrap;transition:all .3s}
+.pill.ok{border-color:var(--green);color:var(--green)}
+.pill.upd{border-color:var(--blue);color:var(--blue)}
+
+/* HOME */
+#home{overflow-y:auto;-webkit-overflow-scrolling:touch;background:radial-gradient(ellipse 80% 55% at 50% 0%,rgba(34,197,94,.05) 0%,transparent 70%)}
+.hero{display:flex;flex-direction:column;align-items:center;padding:28px 24px 16px;gap:18px}
+.shield-wrap{position:relative;width:130px;height:130px;display:flex;align-items:center;justify-content:center}
+.shield-bg{width:110px;height:110px;background:var(--surf);border:2px solid var(--gdim);border-radius:28px;display:flex;align-items:center;justify-content:center;font-size:46px;box-shadow:0 0 40px var(--gglow);animation:ps 3s ease-in-out infinite}
+@keyframes ps{0%,100%{box-shadow:0 0 40px var(--gglow)}50%{box-shadow:0 0 70px rgba(34,197,94,.28)}}
+.ring{position:absolute;inset:0;border:1px solid rgba(34,197,94,.2);border-radius:50%;animation:spin 8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.ring::before{content:'';position:absolute;top:-4px;left:50%;width:8px;height:8px;margin-left:-4px;background:var(--green);border-radius:50%;box-shadow:0 0 8px var(--green)}
+.hero-title{font-size:26px;font-weight:800;line-height:1.15;text-align:center;letter-spacing:-1px}
+.hero-title .ac{color:var(--green)}
+.hero-sub{font-family:var(--mono);font-size:11px;color:var(--dim);text-align:center;line-height:1.8}
+
+/* UPDATE PANEL */
+.upd-panel{margin:0 20px;background:var(--surf);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;display:flex;align-items:center;gap:12px}
+.upd-ico{font-size:22px;flex-shrink:0}
+.upd-body{flex:1;min-width:0}
+.upd-title{font-size:12px;font-weight:700;letter-spacing:-.2px}
+.upd-sub{font-family:var(--mono);font-size:9px;color:var(--dim);margin-top:2px;line-height:1.5}
+.upd-btn{background:var(--surf2);border:1px solid var(--border);border-radius:8px;padding:6px 12px;font-family:var(--mono);font-size:9px;color:var(--dim);cursor:pointer;white-space:nowrap;transition:all .15s;letter-spacing:.05em}
+.upd-btn:active{border-color:var(--green);color:var(--green)}
+.upd-btn:disabled{opacity:.4}
+.spin{display:inline-block;animation:spin .8s linear infinite}
+
+/* STATS */
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 20px}
+.stat{background:var(--surf);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;text-align:center}
+.stat-n{font-family:var(--mono);font-size:20px;font-weight:700;color:var(--green);display:block}
+.stat-l{font-size:10px;color:var(--dim);margin-top:2px;text-transform:uppercase;letter-spacing:.05em}
+
+/* BUTTONS */
+.btn-g{width:100%;background:linear-gradient(135deg,var(--gdim),var(--green));border:none;border-radius:var(--r);padding:17px;font-family:var(--sans);font-size:17px;font-weight:700;color:#000;cursor:pointer;letter-spacing:-.3px;position:relative;overflow:hidden;box-shadow:0 8px 32px rgba(34,197,94,.3);transition:transform .15s}
+.btn-g:active{transform:scale(.98)}
+.btn-g::after{content:'';position:absolute;top:-50%;left:-60%;width:40%;height:200%;background:rgba(255,255,255,.15);transform:skewX(-20deg);animation:sh 3s ease-in-out infinite}
+@keyframes sh{0%,100%{left:-60%}50%{left:120%}}
+.btn-o{width:100%;background:transparent;border:1px solid var(--border);border-radius:var(--r);padding:14px;font-family:var(--sans);font-size:14px;font-weight:600;color:var(--dim);cursor:pointer;transition:all .15s}
+.btn-o:active{border-color:var(--green);color:var(--green)}
+.btn-b{width:100%;background:var(--surf);border:1px solid var(--blue);border-radius:var(--r);padding:14px;font-family:var(--sans);font-size:14px;font-weight:600;color:var(--blue);cursor:pointer;transition:all .15s}
+.btn-b:active{background:rgba(56,189,248,.1)}
+.or-div{display:flex;align-items:center;gap:12px;font-family:var(--mono);font-size:10px;color:var(--muted)}
+.or-div::before,.or-div::after{content:'';flex:1;height:1px;background:var(--border)}
+.home-btns{display:flex;flex-direction:column;gap:10px;padding:0 20px 32px}
+
+/* SCAN */
+#scan{position:relative;background:#000}
+#video{width:100%;height:100%;object-fit:cover;display:block}
+#canvas{display:none}
+.scan-ov{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none}
+.scan-frame{width:82%;max-width:320px;aspect-ratio:16/9;position:relative}
+.corner{position:absolute;width:28px;height:28px;border-color:var(--green);border-style:solid}
+.c-tl{top:0;left:0;border-width:3px 0 0 3px;border-radius:8px 0 0 0}
+.c-tr{top:0;right:0;border-width:3px 3px 0 0;border-radius:0 8px 0 0}
+.c-bl{bottom:0;left:0;border-width:0 0 3px 3px;border-radius:0 0 0 8px}
+.c-br{bottom:0;right:0;border-width:0 3px 3px 0;border-radius:0 0 8px 0}
+.scan-line{position:absolute;left:0;right:0;height:2px;background:linear-gradient(to right,transparent,var(--green),transparent);box-shadow:0 0 10px var(--green);animation:scanmove 2s ease-in-out infinite;top:0}
+@keyframes scanmove{0%{top:0%;opacity:1}90%{opacity:1}100%{top:100%;opacity:0}}
+.scan-hint{margin-top:20px;font-family:var(--mono);font-size:10px;color:rgba(255,255,255,.65);text-align:center;letter-spacing:.05em;animation:blink 2s ease-in-out infinite}
+@keyframes blink{0%,100%{opacity:.65}50%{opacity:.25}}
+
+/* CAMERA CONTROLS */
+.cam-ctrl{position:absolute;bottom:0;left:0;right:0;padding:20px 20px 44px;background:linear-gradient(to top,rgba(0,0,0,.92),transparent);pointer-events:all}
+.ctrl-row{display:flex;align-items:center;justify-content:space-between}
+.ctrl-side{display:flex;flex-direction:column;align-items:center;gap:6px}
+.ctrl-lbl{font-family:var(--mono);font-size:9px;letter-spacing:.06em;color:rgba(255,255,255,.45);text-transform:uppercase}
+.ctrl-lbl.on{color:#ffd93d}
+.btn-close{width:52px;height:52px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px;cursor:pointer;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);color:#fff;font-family:inherit;transition:all .15s}
+.btn-close:active{transform:scale(.9)}
+.btn-cap{width:78px;height:78px;background:var(--green);border:4px solid rgba(255,255,255,.3);border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:30px;transition:transform .15s,box-shadow .15s;box-shadow:0 0 28px rgba(34,197,94,.55)}
+.btn-cap:active{transform:scale(.91)}
+
+/* TORCH BUTTON — KEY FEATURE */
+.btn-torch{
+  width:60px;height:60px;border-radius:50%;
+  border:2px solid rgba(255,255,255,.25);
+  display:flex;align-items:center;justify-content:center;
+  font-size:26px;cursor:pointer;
+  transition:all .25s ease;
+  backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+  background:rgba(255,255,255,.1);
+  position:relative;
+}
+.btn-torch::after{
+  content:'OFF';
+  position:absolute;bottom:-4px;right:-4px;
+  background:rgba(0,0,0,.7);
+  color:rgba(255,255,255,.5);
+  font-family:var(--mono);font-size:7px;letter-spacing:.05em;
+  padding:2px 5px;border-radius:4px;
+}
+.btn-torch.on{
+  background:rgba(255,220,60,.25);
+  border-color:#ffd93d;
+  box-shadow:0 0 30px rgba(255,220,60,.55),0 0 60px rgba(255,220,60,.2);
+}
+.btn-torch.on::after{content:'ON';background:rgba(255,220,60,.3);color:#ffd93d}
+.btn-torch:active{transform:scale(.88)}
+.btn-torch.unavail{opacity:.3;cursor:not-allowed}
+
+/* PROCESSING */
+#processing{align-items:center;justify-content:center;gap:24px;padding:40px;background:radial-gradient(ellipse 80% 50% at 50% 50%,rgba(34,197,94,.06) 0%,transparent 70%)}
+.proc-spin{font-size:52px;animation:spin 1.5s linear infinite}
+.proc-title{font-size:22px;font-weight:700;letter-spacing:-.5px;text-align:center}
+.proc-bar-wrap{width:100%;background:var(--surf);border:1px solid var(--border);border-radius:100px;height:6px;overflow:hidden}
+.proc-bar{height:100%;background:linear-gradient(to right,var(--gdim),var(--green));border-radius:100px;transition:width .3s;box-shadow:0 0 10px var(--green);width:0%}
+.proc-st{font-family:var(--mono);font-size:11px;color:var(--dim);text-align:center;min-height:20px}
+
+/* MANUAL */
+#manual{overflow-y:auto;-webkit-overflow-scrolling:touch}
+.man-body{padding:20px;display:flex;flex-direction:column;gap:16px}
+.m-title{font-size:22px;font-weight:800;letter-spacing:-.5px}
+.m-sub{font-family:var(--mono);font-size:11px;color:var(--dim);line-height:1.7}
+.inp-lbl{font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;display:block}
+textarea{width:100%;background:var(--surf);border:1px solid var(--border);border-radius:var(--r);padding:16px;font-family:var(--mono);font-size:12px;color:var(--text);resize:none;height:180px;outline:none;line-height:1.7;transition:border-color .2s}
+textarea:focus{border-color:var(--green)}
+textarea::placeholder{color:var(--muted)}
+
+/* RESULTS */
+#results{overflow:hidden}
+.res-sc{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:16px 20px 100px;display:flex;flex-direction:column;gap:14px}
+.res-sc::-webkit-scrollbar{display:none}
+.verdict{border-radius:var(--r);padding:18px;display:flex;gap:14px;align-items:flex-start;border:1px solid;position:relative;overflow:hidden}
+.verdict::before{content:'';position:absolute;inset:0;opacity:.07;background:currentColor}
+.verdict.danger{border-color:var(--red);color:var(--red)}
+.verdict.caution{border-color:var(--yellow);color:var(--yellow)}
+.verdict.safe{border-color:var(--green);color:var(--green)}
+.v-ico{font-size:34px;flex-shrink:0}
+.v-title{font-size:17px;font-weight:700;letter-spacing:-.3px;color:inherit}
+.v-sub{font-size:12px;color:var(--dim);margin-top:4px;line-height:1.5;font-family:var(--mono)}
+.sec-lbl{font-family:var(--mono);font-size:9px;letter-spacing:.15em;text-transform:uppercase;color:var(--muted);padding-left:4px;margin-top:4px}
+.chips{display:flex;flex-wrap:wrap;gap:8px;background:var(--surf);border:1px solid var(--border);border-radius:var(--r);padding:16px}
+.chip{font-family:var(--mono);font-size:10px;padding:5px 10px;border-radius:100px;border:1px solid var(--border);color:var(--dim)}
+.chip.h1{border-color:var(--red);color:var(--red);background:var(--rglow)}
+.chip.h2{border-color:var(--yellow);color:var(--yellow);background:var(--yglow)}
+.legend{display:flex;gap:12px;background:var(--surf);border:1px solid var(--border);border-radius:var(--r);padding:12px 16px}
+.li{display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10px;color:var(--dim)}
+.ldot{width:8px;height:8px;border-radius:50%}
+.ldot.r{background:var(--red)}.ldot.y{background:var(--yellow)}.ldot.g{background:var(--green)}
+.hcard{background:var(--surf);border-radius:var(--r);padding:16px;border-left:3px solid;display:flex;flex-direction:column;gap:6px}
+.hcard.c1{border-color:var(--red)}.hcard.c2{border-color:var(--yellow)}
+.h-name{font-size:15px;font-weight:700;letter-spacing:-.3px}
+.c1 .h-name{color:var(--red)}.c2 .h-name{color:var(--yellow)}
+.h-meta{font-family:var(--mono);font-size:9px;letter-spacing:.08em;color:var(--muted);text-transform:uppercase}
+.h-desc{font-size:12px;color:var(--dim);line-height:1.6}
+.hbadge{display:inline-flex;align-items:center;gap:5px;font-family:var(--mono);font-size:9px;padding:3px 8px;border-radius:100px;letter-spacing:.06em}
+.hbadge.ban{background:rgba(239,68,68,.15);color:var(--red)}.hbadge.res{background:rgba(234,179,8,.15);color:var(--yellow)}
+.alt-grid{display:flex;flex-direction:column;gap:10px}
+.alt-card{background:var(--surf);border:1px solid var(--border);border-radius:var(--r);padding:16px;display:flex;gap:14px;align-items:flex-start}
+.alt-em{font-size:26px;flex-shrink:0}
+.alt-name{font-size:14px;font-weight:700;letter-spacing:-.3px}
+.alt-desc{font-size:12px;color:var(--dim);margin-top:4px;line-height:1.5}
+.safe-wrap{background:var(--gglow);border:1px solid var(--green);border-radius:var(--r);padding:24px;text-align:center}
+.no-res{background:var(--surf);border:1px solid var(--border);border-radius:var(--r);padding:24px;text-align:center;font-family:var(--mono);font-size:12px;color:var(--dim);line-height:1.7}
+.src-panel{background:var(--surf);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px}
+.src-title{font-size:12px;font-weight:700;margin-bottom:8px}
+.src-item{font-family:var(--mono);font-size:10px;color:var(--dim);display:flex;align-items:center;gap:8px;padding:3px 0}
+.src-dot{width:6px;height:6px;border-radius:50%;background:var(--green);flex-shrink:0}
+.bot-bar{position:absolute;bottom:0;left:0;right:0;padding:12px 20px 28px;background:linear-gradient(to top,var(--bg) 60%,transparent);display:flex;gap:10px}
+.bot-bar button{flex:1;padding:14px;border-radius:var(--r);border:none;font-family:var(--sans);font-size:14px;font-weight:700;cursor:pointer;transition:opacity .15s;letter-spacing:-.2px}
+.bot-bar button:active{opacity:.8}
+.bp{background:var(--green);color:#000}.bs{background:var(--surf2);border:1px solid var(--border)!important;color:var(--dim)}
+
+/* INSTALL GUIDE */
+#install{overflow-y:auto;-webkit-overflow-scrolling:touch}
+.inst-body{padding:20px;display:flex;flex-direction:column;gap:20px;padding-bottom:40px}
+.inst-title{font-size:24px;font-weight:800;letter-spacing:-.5px}
+.inst-sub{font-family:var(--mono);font-size:11px;color:var(--dim);line-height:1.8}
+.method{background:var(--surf);border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
+.method-hd{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px}
+.mbadge{font-family:var(--mono);font-size:9px;letter-spacing:.1em;padding:3px 10px;border-radius:100px}
+.mbest{background:rgba(34,197,94,.15);color:var(--green);border:1px solid rgba(34,197,94,.3)}
+.malt{background:rgba(56,189,248,.15);color:var(--blue);border:1px solid rgba(56,189,248,.3)}
+.method-name{font-size:14px;font-weight:700;letter-spacing:-.3px}
+.steps{padding:18px;display:flex;flex-direction:column;gap:14px}
+.step{display:flex;gap:14px;align-items:flex-start}
+.step-n{width:28px;height:28px;background:var(--surf2);border:1px solid var(--border);border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:11px;font-weight:700;color:var(--green);flex-shrink:0;margin-top:1px}
+.step-t{font-size:13px;color:var(--dim);line-height:1.65}
+.step-t strong{color:var(--text);display:block;margin-bottom:2px;font-size:14px}
+code{font-family:var(--mono);font-size:10px;background:var(--surf2);border:1px solid var(--border);padding:2px 7px;border-radius:6px;color:var(--green);white-space:nowrap}
+.tip-box{background:rgba(34,197,94,.06);border:1px solid rgba(34,197,94,.2);border-radius:var(--r);padding:14px 16px;font-family:var(--mono);font-size:11px;color:var(--dim);line-height:1.8}
+.tip-box b{color:var(--green)}
+
+/* TOAST */
+.toast{position:fixed;bottom:80px;left:20px;right:20px;max-width:440px;margin:0 auto;background:var(--surf2);border:1px solid var(--border);border-radius:var(--r);padding:14px 18px;font-size:13px;font-family:var(--mono);color:var(--dim);box-shadow:0 8px 32px rgba(0,0,0,.4);z-index:1000;animation:tup .3s ease,tfade .3s ease 2.7s forwards;pointer-events:none}
+@keyframes tup{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
+@keyframes tfade{to{opacity:0;transform:translateY(-8px)}}
+</style>
+</head>
+<body>
+<div id="app">
+
+<!-- ═══ HOME ═══════════════════════════════════════════ -->
+<div id="home" class="screen active">
+  <div class="hdr">
+    <div class="logo"><div class="logo-i">🛡️</div><div class="logo-t">Food<span>Guard</span></div></div>
+    <div class="pill ok" id="connPill">OFFLINE DB ✓</div>
+  </div>
+  <div class="hero">
+    <div class="shield-wrap">
+      <div class="shield-bg">🛡️</div><div class="ring"></div>
+    </div>
+    <div class="hero-title">Know what's<br>in your <span class="ac">food.</span></div>
+    <div class="hero-sub">Scan any ingredient label · Detects banned<br>&amp; harmful substances · Works offline</div>
+  </div>
+
+  <!-- LIVE UPDATE PANEL -->
+  <div class="upd-panel">
+    <div class="upd-ico" id="updIco">🔄</div>
+    <div class="upd-body">
+      <div class="upd-title" id="updTitle">Live Database Available</div>
+      <div class="upd-sub" id="updSub">Sync with WHO · EFSA · OpenFoodFacts official data</div>
+    </div>
+    <button class="upd-btn" id="updBtn" onclick="doUpdate()">SYNC NOW</button>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><span class="stat-n" id="sB">22+</span><span class="stat-l">Banned Substances</span></div>
+    <div class="stat"><span class="stat-n" id="sU">20+</span><span class="stat-l">Flagged Ingredients</span></div>
+  </div>
+
+  <div class="home-btns">
+    <button class="btn-g" onclick="startScan()">📷 &nbsp;Scan Ingredient Label</button>
+    <div class="or-div">OR</div>
+    <button class="btn-o" onclick="showManual()">✏️ &nbsp;Type Ingredients Manually</button>
+    <button class="btn-b" onclick="showScreen('install')">📲 &nbsp;How to Install on My Phone</button>
+  </div>
+</div>
+
+<!-- ═══ SCAN ════════════════════════════════════════════ -->
+<div id="scan" class="screen">
+  <video id="video" autoplay playsinline muted></video>
+  <canvas id="canvas"></canvas>
+  <div class="scan-ov">
+    <div class="scan-frame">
+      <div class="corner c-tl"></div><div class="corner c-tr"></div>
+      <div class="corner c-bl"></div><div class="corner c-br"></div>
+      <div class="scan-line"></div>
+    </div>
+    <div class="scan-hint">ALIGN INGREDIENTS LIST IN FRAME</div>
+  </div>
+  <div class="cam-ctrl">
+    <div class="ctrl-row">
+      <div class="ctrl-side">
+        <button class="btn-close" onclick="goHome()">✕</button>
+        <span class="ctrl-lbl">CLOSE</span>
+      </div>
+      <button class="btn-cap" onclick="capturePhoto()">📷</button>
+      <div class="ctrl-side">
+        <button class="btn-torch" id="torchBtn" onclick="toggleTorch()">🔦</button>
+        <span class="ctrl-lbl" id="torchLbl">TORCH</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ PROCESSING ══════════════════════════════════════ -->
+<div id="processing" class="screen">
+  <div class="proc-spin">⚙️</div>
+  <div class="proc-title">Analysing Ingredients</div>
+  <div class="proc-bar-wrap" style="width:100%"><div class="proc-bar" id="procBar"></div></div>
+  <div class="proc-st" id="procSt">Initialising OCR…</div>
+</div>
+
+<!-- ═══ MANUAL ══════════════════════════════════════════ -->
+<div id="manual" class="screen">
+  <div class="hdr"><div class="logo"><div class="logo-i">✏️</div><div class="logo-t">Food<span>Guard</span></div></div></div>
+  <div class="man-body">
+    <div class="m-title">Type Ingredients</div>
+    <div class="m-sub">Paste or type the full ingredients list exactly as shown on the packaging.</div>
+    <div>
+      <label class="inp-lbl">Ingredients List</label>
+      <textarea id="manInput" placeholder="e.g. Water, Sugar, Wheat Flour, Palm Oil, High Fructose Corn Syrup, Sodium Benzoate (E211), Partially Hydrogenated Vegetable Oil, Aspartame (E951)…"></textarea>
+    </div>
+    <button class="btn-g" onclick="analyzeManual()">🔍 &nbsp;Analyse Ingredients</button>
+    <button class="btn-o" onclick="goHome()">← Back</button>
+  </div>
+</div>
+
+<!-- ═══ RESULTS ═════════════════════════════════════════ -->
+<div id="results" class="screen">
+  <div class="hdr"><div class="logo"><div class="logo-i">📋</div><div class="logo-t">Food<span>Guard</span></div></div></div>
+  <div class="res-sc" id="resCont"></div>
+  <div class="bot-bar">
+    <button class="bs" onclick="goHome()">← Home</button>
+    <button class="bp" onclick="startScan()">Scan Again</button>
+  </div>
+</div>
+
+<!-- ═══ INSTALL GUIDE ═══════════════════════════════════ -->
+<div id="install" class="screen">
+  <div class="hdr"><div class="logo"><div class="logo-i">📲</div><div class="logo-t">Food<span>Guard</span></div></div></div>
+  <div class="inst-body">
+    <div class="inst-title">Install on Your Phone</div>
+    <div class="inst-sub">No app store needed. No technical knowledge required. Just follow these steps — it takes about 2 minutes.</div>
+
+    <div class="method">
+      <div class="method-hd">
+        <span class="mbadge mbest">⭐ EASIEST — USE A LAPTOP</span>
+      </div>
+      <div style="padding:0 18px;padding-bottom:0"><div class="method-name" style="padding:14px 0 4px">Use a Computer + Netlify Drop (Free)</div></div>
+      <div class="steps">
+        <div class="step">
+          <div class="step-n">1</div>
+          <div class="step-t"><strong>Save the app file to your computer</strong>Download the <code>foodguard.html</code> file to your Desktop or Downloads folder.</div>
+        </div>
+        <div class="step">
+          <div class="step-n">2</div>
+          <div class="step-t"><strong>Open Netlify Drop on your computer</strong>Open any browser (Chrome, Edge, Firefox, Safari) and go to:<br><br><code>app.netlify.com/drop</code><br><br>You will see a big grey area that says "Drag and drop".</div>
+        </div>
+        <div class="step">
+          <div class="step-n">3</div>
+          <div class="step-t"><strong>Drag the file onto the page</strong>Find the <code>foodguard.html</code> file on your computer and drag it onto the Netlify Drop page. Drop it in the grey area. Wait about 10 seconds.<br><br>✅ It's free. No account needed. No sign-up.</div>
+        </div>
+        <div class="step">
+          <div class="step-n">4</div>
+          <div class="step-t"><strong>Copy the link Netlify gives you</strong>After uploading, Netlify shows you a link like:<br><code>shiny-cookie-abc123.netlify.app</code><br><br>Copy that link or email it to yourself.</div>
+        </div>
+        <div class="step">
+          <div class="step-n">5</div>
+          <div class="step-t"><strong>Open the link on your phone</strong>On your phone, open the link in:<br>
+          — <strong>Chrome</strong> (Android / iPhone)<br>
+          — <strong>Safari</strong> (iPhone)<br><br>
+          The camera and torch will work perfectly.</div>
+        </div>
+        <div class="step">
+          <div class="step-n">6</div>
+          <div class="step-t"><strong>Add it to your Home Screen</strong>
+            <strong>On Android (Chrome):</strong> Tap the 3-dot menu ⋮ at the top right → tap "Add to Home screen" → tap Add.<br><br>
+            <strong>On iPhone (Safari):</strong> Tap the Share button ⬆ at the bottom → scroll down → tap "Add to Home Screen" → tap Add.<br><br>
+            ✅ FoodGuard is now on your phone exactly like a real app — tap it anytime to open!
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="method">
+      <div class="method-hd">
+        <span class="mbadge malt">📱 NO COMPUTER NEEDED</span>
+      </div>
+      <div style="padding:0 18px;padding-bottom:0"><div class="method-name" style="padding:14px 0 4px">Phone Only — Use Manual Mode</div></div>
+      <div class="steps">
+        <div class="step">
+          <div class="step-n">1</div>
+          <div class="step-t"><strong>Send the file to yourself</strong>Email or WhatsApp the <code>foodguard.html</code> file to your own number or email.</div>
+        </div>
+        <div class="step">
+          <div class="step-n">2</div>
+          <div class="step-t"><strong>Open the file in your browser</strong>Tap the attachment in your email or WhatsApp. When asked how to open it, choose <strong>Chrome</strong> or <strong>Safari</strong> — not a document viewer.</div>
+        </div>
+        <div class="step">
+          <div class="step-n">3</div>
+          <div class="step-t"><strong>Use Manual Input mode</strong>In this mode, the camera may not work (phones require a special link for camera security). Tap <strong>"Type Ingredients Manually"</strong> and paste the ingredients from the food label. Everything else works perfectly offline.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tip-box">
+      <b>❓ Why does the camera need a web link?</b><br>
+      For your safety, phones only allow camera access from secure web addresses (starting with <b>https://</b>). When you use Netlify Drop, your file gets a secure link automatically — completely free, no account needed, ready in under 1 minute.
+    </div>
+
+    <button class="btn-g" onclick="goHome()">✓ Got It — Go Back Home</button>
+    <button class="btn-o" onclick="goHome()">← Back</button>
+  </div>
+</div>
+
+</div><!-- #app -->
+
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<script>
+// ═══════════════════════════════════════════════════════════
+//  BUILT-IN OFFLINE DATABASE
+// ═══════════════════════════════════════════════════════════
+const BUILTIN1 = [
+  {name:"Partially Hydrogenated Oil",aliases:["partially hydrogenated","hydrogenated vegetable oil","hydrogenated fat","trans fat","vegetable shortening"],ins:[],agency:"WHO / FDA",status:"BANNED",desc:"Industrially produced trans fats. Strongly linked to heart disease. WHO calls them among the most harmful food additives.",details:"FDA revoked GRAS status 2018. WHO REPLACE initiative targets global elimination. Banned in EU, Canada, Denmark."},
+  {name:"Potassium Bromate",aliases:["potassium bromate","bromate","e924"],ins:["924"],agency:"EU / UK / India / China",status:"BANNED",desc:"Flour improver classified as possibly carcinogenic (IARC Group 2B). Banned in most countries, still legal in USA.",details:"Banned: EU, UK, Canada, India, China, Brazil, Nigeria, Peru."},
+  {name:"Brominated Vegetable Oil",aliases:["brominated vegetable oil","bvo"],ins:[],agency:"FDA USA (2024) / EU / Japan",status:"BANNED",desc:"Used in citrus drinks. Bromine accumulates in body fat. FDA finalised US ban in 2024.",details:"Banned: EU, Japan, India. FDA ban effective August 2024."},
+  {name:"Azodicarbonamide",aliases:["azodicarbonamide","ada","e927a","e927"],ins:["927a","927"],agency:"EU / UK / Australia / Singapore",status:"BANNED",desc:"Bread improver. Breaks down to semicarbazide — a potential carcinogen. Linked to asthma.",details:"Legal in USA. Banned: EU, UK, Australia, Singapore, New Zealand."},
+  {name:"Red Dye 3 / Erythrosine",aliases:["red dye 3","erythrosine","fd&c red 3","fdc red 3","red 3","e127"],ins:["127"],agency:"FDA USA (2024)",status:"BANNED",desc:"FDA banned from food in January 2024 after animal studies showed thyroid tumour risk.",details:"Most EU countries already banned it. FDA ban fully effective January 2027."},
+  {name:"Titanium Dioxide",aliases:["titanium dioxide","e171","ci 77891"],ins:["171"],agency:"EU / EFSA (2022)",status:"BANNED",desc:"White food colourant. EFSA concluded genotoxicity could not be excluded. EU banned August 2022.",details:"Still permitted in USA and other countries. Common in sweets and confectionery."},
+  {name:"Cyclamate",aliases:["cyclamate","sodium cyclamate","calcium cyclamate","e952"],ins:["952"],agency:"FDA USA / Health Canada",status:"BANNED",desc:"Artificial sweetener. Banned in USA since 1969 and Canada due to animal cancer studies.",details:"Permitted in EU, UK and 50+ other countries. Still widely used globally."},
+  {name:"Sudan Dyes",aliases:["sudan i","sudan ii","sudan iii","sudan iv","sudan red","para red"],ins:[],agency:"Global — Never Approved",status:"BANNED",desc:"Industrial azo dyes illegally found in spices and chilli. IARC possible carcinogens. Never approved for food.",details:"Regularly detected in adulterated spices. Subject to EU RASFF food safety alerts."},
+  {name:"Rhodamine B",aliases:["rhodamine b","rhodamine"],ins:[],agency:"Global — Never Approved",status:"BANNED",desc:"Industrial dye illegally used in sweets and spices. Carcinogenic, kidney and liver toxic.",details:"Not approved anywhere for food use. Common adulterant in coloured spices and sweets."},
+  {name:"Tartrazine",aliases:["tartrazine","yellow 5","fd&c yellow 5","e102"],ins:["102"],agency:"EU (mandatory label warning)",status:"RESTRICTED",desc:"Yellow dye. EU requires 'may have an adverse effect on activity and attention in children' label.",details:"Southampton Six dye. Banned in Norway and Austria. FDA permits but under review."},
+  {name:"Sunset Yellow",aliases:["sunset yellow","yellow 6","fd&c yellow 6","e110"],ins:["110"],agency:"EU (mandatory label warning)",status:"RESTRICTED",desc:"Orange-yellow dye. EU requires hyperactivity warning. Banned in Norway and Finland.",details:"Southampton Six dye. FDA permits. Widely used in soft drinks and confectionery."},
+  {name:"Quinoline Yellow",aliases:["quinoline yellow","e104"],ins:["104"],agency:"EU (mandatory warning) / Not approved in USA/Australia",status:"RESTRICTED",desc:"Yellow dye. Not approved in USA, Australia, Norway, Japan. EU mandatory hyperactivity warning.",details:"Southampton Six. Banned: USA, Australia, Norway, Japan."},
+  {name:"Carmoisine / Azorubine",aliases:["carmoisine","azorubine","e122"],ins:["122"],agency:"EU (mandatory warning) / Not approved in USA/Canada",status:"RESTRICTED",desc:"Red dye. Not approved in USA, Canada, Japan. EU mandatory hyperactivity warning.",details:"Southampton Six dye. Found in sweets, drinks and preserves."},
+  {name:"Allura Red",aliases:["allura red","red 40","fd&c red 40","e129"],ins:["129"],agency:"EU (mandatory warning)",status:"RESTRICTED",desc:"Most common red dye in USA. EU requires hyperactivity warning. FDA reviewing in 2024.",details:"Southampton Six. Most widely used artificial red in the world."},
+  {name:"Ponceau 4R",aliases:["ponceau 4r","e124"],ins:["124"],agency:"EU (mandatory warning) / Not approved in USA/Canada",status:"RESTRICTED",desc:"Red dye. Not approved in USA, Norway, Finland, Canada. EU mandatory hyperactivity warning.",details:"Southampton Six. Found in strawberry and cherry flavoured products."},
+  {name:"Brilliant Blue FCF",aliases:["brilliant blue","fd&c blue 1","e133"],ins:["133"],agency:"EU (restricted) / Some EU countries ban",status:"RESTRICTED",desc:"Blue dye. Banned in Belgium, France, Germany, Greece, Italy, Spain, Switzerland.",details:"Permitted in USA. Found in sports drinks, confectionery and processed cheese."},
+  {name:"Butylated Hydroxyanisole (BHA)",aliases:["butylated hydroxyanisole","bha","e320"],ins:["320"],agency:"IARC Group 2B / EU restricted",status:"RESTRICTED",desc:"Synthetic antioxidant. IARC lists as possibly carcinogenic. Possible endocrine disruptor.",details:"Banned in Japan. Restricted in EU — not permitted in infant foods."},
+  {name:"Butylated Hydroxytoluene (BHT)",aliases:["butylated hydroxytoluene","bht","e321"],ins:["321"],agency:"EU (restricted)",status:"RESTRICTED",desc:"Synthetic antioxidant. Some evidence of tumour-promoting effects. Endocrine disruptor concerns.",details:"Not permitted in EU infant foods. Widely used in USA cereals and crisps."},
+  {name:"Carrageenan",aliases:["carrageenan","e407"],ins:["407"],agency:"EU (infant formula banned 2020)",status:"RESTRICTED",desc:"Seaweed thickener. EU banned in infant formula 2020 due to gut inflammation concerns.",details:"Degraded form (poligeenan) is carcinogenic. Still permitted in adult foods worldwide."},
+  {name:"Propyl Gallate",aliases:["propyl gallate","e310"],ins:["310"],agency:"EU (restricted)",status:"RESTRICTED",desc:"Antioxidant preservative. Potential endocrine disruptor. Reproductive toxicity in animal studies.",details:"Banned in infant food. Under safety review in several jurisdictions."},
+  {name:"Potassium Iodate",aliases:["potassium iodate","e917","io3"],ins:["917"],agency:"WHO / EU (not approved)",status:"RESTRICTED",desc:"Flour oxidiser. WHO recommends potassium iodide as safer alternative. Excess iodine is toxic.",details:"Not approved in EU. WHO advises against use in flour fortification."},
+  {name:"Sodium Aluminium Sulphate",aliases:["sodium aluminium sulphate","sas","e521","alum","aluminium sulphate"],ins:["521"],agency:"EU (restricted)",status:"RESTRICTED",desc:"Leavening agent. Aluminium accumulation linked to neurotoxicity and Alzheimer's disease risk.",details:"EU applies strict PTWI limits on all aluminium-containing food additives."}
+];
+
+const BUILTIN2 = [
+  {name:"High Fructose Corn Syrup",aliases:["high fructose corn syrup","hfcs","corn syrup","isoglucose","glucose-fructose syrup","fructose corn syrup"],desc:"Metabolised differently from glucose. Strongly linked to obesity, fatty liver disease and insulin resistance.",health:"Metabolic syndrome, non-alcoholic fatty liver disease, type 2 diabetes, obesity."},
+  {name:"Refined Sugar",aliases:["refined sugar","white sugar","cane sugar","sucrose","added sugar"],desc:"Empty calories with no nutritional value. Major driver of obesity, diabetes and tooth decay.",health:"Obesity, type 2 diabetes, dental caries, chronic inflammation, cardiovascular disease."},
+  {name:"Palm Oil",aliases:["palm oil","palm kernel oil","palm fat"],desc:"High in saturated fat. Raises LDL ('bad') cholesterol. Oxidised palm oil linked to organ toxicity.",health:"Cardiovascular disease risk. Organ damage when oxidised at high temperatures."},
+  {name:"Sodium Benzoate",aliases:["sodium benzoate","benzoate of soda","e211"],desc:"Preservative that reacts with Vitamin C (ascorbic acid) to form benzene — a confirmed carcinogen.",health:"Benzene (carcinogen) formation. Childhood hyperactivity. Possible DNA damage."},
+  {name:"Aspartame",aliases:["aspartame","e951","nutrasweet","equal"],desc:"IARC reclassified as 'possibly carcinogenic to humans' (Group 2B) in July 2023.",health:"Possible carcinogen. Some links to headaches, mood disorders. WHO ongoing review."},
+  {name:"Sucralose",aliases:["sucralose","e955","splenda"],desc:"2023 studies found it produces DNA-damaging compounds (chloropropanols) and disrupts gut bacteria.",health:"Possible genotoxicity. Gut microbiome disruption. Raises blood glucose in some people."},
+  {name:"Acesulfame Potassium",aliases:["acesulfame potassium","acesulfame k","ace k","e950"],desc:"Artificial sweetener with limited long-term safety data. May affect gut bacteria and insulin response.",health:"Gut microbiome disruption. Cognitive effects seen in animal studies."},
+  {name:"Sodium Nitrate / Nitrite",aliases:["sodium nitrate","sodium nitrite","potassium nitrate","potassium nitrite","e249","e250","e251","e252"],desc:"Preservatives in processed meats. Form carcinogenic nitrosamines when heated. WHO classifies processed meat as Group 1 carcinogen.",health:"Nitrosamines linked to colorectal, stomach and oesophageal cancers."},
+  {name:"Monosodium Glutamate",aliases:["monosodium glutamate","msg","e621","sodium glutamate","glutamic acid"],desc:"Flavour enhancer. Some individuals report Chinese Restaurant Syndrome symptoms. High sodium content.",health:"Headaches, flushing in sensitive people. High sodium intake risk."},
+  {name:"Maltodextrin",aliases:["maltodextrin"],desc:"Highly processed starch derivative with glycaemic index higher than table sugar (GI 85–105).",health:"Blood sugar spikes, insulin resistance, potential gut microbiome disruption."},
+  {name:"Carboxymethyl Cellulose",aliases:["carboxymethyl cellulose","cmc","sodium carboxymethyl cellulose","e466"],desc:"Emulsifier. Animal studies link it to gut microbiome disruption, metabolic syndrome and intestinal inflammation.",health:"Gut inflammation, altered microbiome, possible colitis risk."},
+  {name:"Polysorbate 80",aliases:["polysorbate 80","e433","tween 80"],desc:"Emulsifier shown in animal studies to disrupt gut lining and microbiome. Linked to systemic inflammation.",health:"Gut barrier disruption, metabolic syndrome, inflammatory bowel disease associations."},
+  {name:"EDTA",aliases:["edta","calcium disodium edta","disodium edta","e385","e386"],desc:"Chelating preservative. Binds and depletes essential minerals including zinc, calcium and iron.",health:"Mineral depletion. Kidney damage at high doses. Gastrointestinal irritation."},
+  {name:"Caramel Colour Class III/IV",aliases:["caramel colour","caramel color","e150c","e150d","ammonia caramel","sulfite ammonia caramel"],desc:"Class III & IV variants contain 4-methylimidazole (4-MEI), classified as possible carcinogen (IARC Group 2B).",health:"4-MEI — possible carcinogen. Especially in cola drinks and dark sauces."},
+  {name:"Interesterified Fat",aliases:["interesterified fat","interesterified oil","fully hydrogenated","interesterified"],desc:"Trans fat replacement. Emerging evidence suggests similar metabolic problems to trans fats.",health:"May raise blood glucose, increase LDL. Similar metabolic profile to trans fats."},
+  {name:"Artificial Food Colouring",aliases:["artificial colour","artificial color","fd&c","food dye","colour added","color added","artificial colouring"],desc:"Petroleum-derived synthetic dyes. Multiple studies link to childhood hyperactivity and behavioural issues.",health:"ADHD and hyperactivity in children. Allergic reactions. Some are confirmed carcinogens."},
+  {name:"Propylene Glycol",aliases:["propylene glycol","e1520","1,2-propanediol"],desc:"Humectant and solvent. Kidney problems reported with excessive intake. Risk for infants.",health:"Kidney damage with high exposure. Metabolic acidosis risk in infants."},
+  {name:"Disodium Inosinate / Guanylate",aliases:["disodium inosinate","disodium guanylate","e631","e627"],desc:"Flavour enhancers used alongside MSG. Rich in purines that trigger gout attacks.",health:"Gout flare-ups. Unsuitable for people with hyperuricaemia or kidney disease."},
+  {name:"Bleached Flour",aliases:["bleached flour","bleached wheat flour","enriched bleached flour"],desc:"Chemically bleached with chlorine or peroxides — strips fibre and vitamins. High glycaemic index.",health:"Nutrient-depleted. Potential chemical residues. Rapid blood sugar spikes."},
+  {name:"Partially Inverted Sugar",aliases:["partially inverted sugar","invert sugar syrup","inverted sugar"],desc:"Processed sugar with high free fructose. Metabolic concerns similar to HFCS.",health:"Obesity, fatty liver disease, insulin resistance similar to HFCS."}
+];
+
+const ALTS = {
+  "Partially Hydrogenated Oil":{emoji:"🫒",name:"Cold-pressed Olive or Avocado Oil",desc:"Provides healthy monounsaturated fats with zero trans fat. Look for 'cold-pressed' or 'expeller pressed' on the label."},
+  "Potassium Bromate":{emoji:"🌾",name:"Sourdough or Artisan Bread",desc:"Long fermentation replaces all chemical improvers. Choose breads with just flour, water, salt, and yeast."},
+  "Brominated Vegetable Oil":{emoji:"🍋",name:"Fresh-squeezed or Cold-pressed Juice",desc:"No BVO needed when juice is truly fresh. Also look for ester gum (E445) as a safer emulsifier."},
+  "Azodicarbonamide":{emoji:"🫓",name:"European Breads (ADA-free)",desc:"German, French, and artisan-style bakers do not use ADA. Look for short, clean ingredient lists on bread."},
+  "Red Dye 3 / Erythrosine":{emoji:"🍒",name:"Naturally Coloured Products",desc:"Look for beet juice (E162) or fruit concentrate for red colouring. Avoid anything labelled 'Red 3' or 'E127'."},
+  "Titanium Dioxide":{emoji:"🍬",name:"Products Without White Coating",desc:"Choose confectionery and chewing gum without shiny white coatings. Natural alternatives use rice starch."},
+  "High Fructose Corn Syrup":{emoji:"🍯",name:"Raw Honey or Pure Maple Syrup",desc:"Small amounts of raw honey or 100% maple syrup provide sweetness with some nutritional value."},
+  "Refined Sugar":{emoji:"🌴",name:"Coconut Sugar or Whole Dates",desc:"Coconut sugar has a lower glycaemic index. Whole dates add sweetness with fibre and potassium."},
+  "Palm Oil":{emoji:"🌻",name:"Sunflower or Rapeseed Oil Products",desc:"Better fatty acid profiles and no deforestation concerns. Look for 'palm oil free' on labels."},
+  "Sodium Benzoate":{emoji:"🧊",name:"Products Preserved with Tocopherols or Rosemary",desc:"Vitamin E (tocopherols, E306-309) and rosemary extract are natural, safe preservatives."},
+  "Aspartame":{emoji:"🍃",name:"Stevia (E960) or Monk Fruit Extract",desc:"Plant-based zero-calorie sweeteners with no current carcinogenicity concerns and no IARC listing."},
+  "Sodium Nitrate / Nitrite":{emoji:"🥬",name:"Nitrate-free or Uncured Meats",desc:"Look for 'uncured' and 'no nitrates or nitrites added' on the label. Fresh, unprocessed meat is best."},
+  "Tartrazine":{emoji:"🟡",name:"Turmeric or Beta-carotene Coloured Products",desc:"Turmeric (E100) and beta-carotene (E160a) are natural, safe yellow colourants without hyperactivity risk."},
+  "Sunset Yellow":{emoji:"🟠",name:"Annatto or Beta-carotene Coloured Products",desc:"Annatto (E160b) gives a natural orange-yellow colour. Safe and derived from seeds of the achiote tree."},
+  "Allura Red":{emoji:"🔴",name:"Products with Beetroot or Fruit Colouring",desc:"Beetroot extract (E162) and berry juices provide natural red colour. Look for 'no artificial colours'."},
+  "Caramel Colour Class III/IV":{emoji:"☕",name:"Naturally Coloured Drinks (Tea, Coffee)",desc:"Opt for drinks coloured with real fruit or tea. Class I caramel (E150a) is safer than Class III/IV."},
+  "Sodium Benzoate":{emoji:"🧊",name:"Naturally Preserved Foods",desc:"Fermented products (vinegar, lactic acid) preserve naturally without benzene risk."},
+  "Maltodextrin":{emoji:"🌾",name:"Whole Grain Products",desc:"Products with less processing and no filler starches. Short ingredient lists are the best guide."},
+  "Carrageenan":{emoji:"🥗",name:"Products with Agar or Guar Gum",desc:"Agar agar and guar gum (E412) are safer thickening alternatives in clean-label products."}
+};
+
+// ═══════════════════════════════════════════════════════════
+//  LIVE DATABASE STATE
+// ═══════════════════════════════════════════════════════════
+let DB = { cat1:[...BUILTIN1], cat2:[...BUILTIN2], lastUpdated:null, netCount:0 };
+
+function loadDB() {
+  try {
+    const s = localStorage.getItem('fg_db_v2');
+    if (s) {
+      const p = JSON.parse(s);
+      if (p && p.cat1 && p.cat1.length >= BUILTIN1.length) { DB = p; }
+    }
+  } catch(e) {}
+}
+function saveDB() {
+  try { localStorage.setItem('fg_db_v2', JSON.stringify(DB)); } catch(e) {}
+}
+
+// ═══════════════════════════════════════════════════════════
+//  AUTO-UPDATE FROM OFFICIAL SOURCES
+//  Data: OpenFoodFacts Additives Taxonomy (aggregates WHO, EFSA, EU)
+//  CORS Proxy: allorigins.win (free, no key needed)
+// ═══════════════════════════════════════════════════════════
+const PROXY = 'https://api.allorigins.win/get?url=';
+const SRC = 'https://world.openfoodfacts.org/data/taxonomies/additives.json';
+
+async function doUpdate() {
+  const btn = document.getElementById('updBtn');
+  const ico = document.getElementById('updIco');
+  const title = document.getElementById('updTitle');
+  const sub = document.getElementById('updSub');
+  const pill = document.getElementById('connPill');
+
+  btn.disabled = true;
+  ico.innerHTML = '<span class="spin">⚙️</span>';
+  title.textContent = 'Connecting to official sources…';
+  sub.textContent = 'WHO · EFSA · OpenFoodFacts — please wait';
+  pill.textContent = 'SYNCING…'; pill.className = 'pill upd';
+
+  try {
+    const res = await fetch(PROXY + encodeURIComponent(SRC), { signal: AbortSignal.timeout(20000) });
+    if (!res.ok) throw new Error('fetch failed');
+    const wrapper = await res.json();
+    const tax = JSON.parse(wrapper.contents);
+
+    const found = parseOFF(tax);
+    applyNetEntries(found);
+    DB.lastUpdated = new Date().toISOString();
+    DB.netCount = found.length;
+    saveDB();
+
+    ico.textContent = '✅';
+    title.textContent = 'Database Updated Successfully!';
+    sub.textContent = `+${found.length} entries added · Source: WHO/EFSA via OpenFoodFacts · ${fmtDate(DB.lastUpdated)}`;
+    pill.textContent = 'DB LIVE ✓'; pill.className = 'pill ok';
+    btn.textContent = 'DONE';
+    btn.disabled = false;
+    updateStats();
+    showToast(`✅ Synced! ${found.length} new entries added from WHO/EFSA official data.`);
+  } catch(err) {
+    ico.textContent = '📡';
+    title.textContent = 'Update Failed — Offline Mode';
+    sub.textContent = 'No internet. Built-in database is active with 40+ substances tracked.';
+    pill.textContent = 'OFFLINE DB ✓'; pill.className = 'pill ok';
+    btn.textContent = 'RETRY';
+    btn.disabled = false;
+    showToast('⚠️ No internet connection. The offline database is complete and fully functional.');
+  }
+}
+
+function parseOFF(tax) {
+  const results = [];
+  const seen = new Set([...BUILTIN1,...BUILTIN2].map(s => s.name.toLowerCase()));
+  const RISK = ['high','very-high'];
+  const BAN_KW = ['banned','prohibited','not authorised','not permitted','withdrawn','revoked'];
+
+  for (const [key, val] of Object.entries(tax)) {
+    if (!key.startsWith('additives:')) continue;
+    const nameEn = (val.name?.en || '').trim();
+    if (!nameEn || seen.has(nameEn.toLowerCase())) continue;
+
+    const colorTag = (val.color_tag?.en || '').toLowerCase();
+    const efsa = (val.efsa_evaluation?.en || '').toLowerCase();
+    const reg = (val.regulatory_status?.en || '').toLowerCase();
+
+    const isBanned = BAN_KW.some(k => efsa.includes(k) || reg.includes(k));
+    const isRisk = RISK.some(r => colorTag.includes(r));
+    if (!isBanned && !isRisk) continue;
+
+    const insMatch = key.match(/e(\d+[a-z]?)/i);
+    const ins = insMatch ? [insMatch[1]] : [];
+    const aliases = [nameEn.toLowerCase()];
+    if (ins.length) { aliases.push(`e${ins[0]}`); aliases.push(`ins ${ins[0]}`); }
+
+    results.push({
+      cat: isBanned ? 'cat1' : 'cat2',
+      entry: {
+        name: nameEn, aliases, ins,
+        agency:'EFSA / OpenFoodFacts',
+        status: isBanned ? 'BANNED' : 'RESTRICTED',
+        desc: (efsa.slice(0,200) || `Flagged by EFSA. Risk level: ${colorTag || 'elevated'}.`),
+        details:`Source: OpenFoodFacts aggregated from WHO & EFSA. Updated ${new Date().getFullYear()}.`,
+        fromNet: true
+      }
+    });
+    seen.add(nameEn.toLowerCase());
+  }
+  return results;
+}
+
+function applyNetEntries(entries) {
+  DB.cat1 = DB.cat1.filter(e => !e.fromNet);
+  DB.cat2 = DB.cat2.filter(e => !e.fromNet);
+  entries.forEach(({ cat, entry }) => DB[cat].push(entry));
+}
+
+// ═══════════════════════════════════════════════════════════
+//  ANALYSIS ENGINE
+// ═══════════════════════════════════════════════════════════
+function buildMaps() {
+  const m1=[], m2=[];
+  DB.cat1.forEach(s=>{
+    (s.aliases||[]).forEach(a=>m1.push({term:a.toLowerCase(),s}));
+    (s.ins||[]).forEach(i=>{m1.push({term:`ins ${i}`,s});m1.push({term:`e${i}`,s});});
+  });
+  DB.cat2.forEach(s=>(s.aliases||[]).forEach(a=>m2.push({term:a.toLowerCase(),s})));
+  return {m1,m2};
+}
+
+function analyse(raw) {
+  const {m1,m2} = buildMaps();
+  const txt = raw.toLowerCase().replace(/[()[\]{}]/g,' ').replace(/\s+/g,' ');
+  const f1=[], f2=[], seen=new Set();
+  m1.forEach(({term,s})=>{ if(txt.includes(term)&&!seen.has(s.name)){f1.push({s,term});seen.add(s.name);}});
+  m2.forEach(({term,s})=>{ if(txt.includes(term)&&!seen.has(s.name)){f2.push({s,term});seen.add(s.name);}});
+  const tokens = raw.split(/[,;|\/\n]/).map(t=>t.trim()).filter(t=>t.length>2&&t.length<60);
+  return {f1,f2,tokens};
+}
+
+// ═══════════════════════════════════════════════════════════
+//  RENDER RESULTS
+// ═══════════════════════════════════════════════════════════
+function renderResults(text) {
+  const {f1,f2,tokens} = analyse(text);
+  let html = '';
+
+  // Verdict banner
+  if (f1.length) {
+    html += `<div class="verdict danger"><div class="v-ico">⛔</div>
+      <div><div class="v-title">DO NOT BUY</div>
+      <div class="v-sub">Contains ${f1.length} banned/restricted substance${f1.length>1?'s':''}. This product is not safe to consume.</div></div></div>`;
+  } else if (f2.length) {
+    html += `<div class="verdict caution"><div class="v-ico">⚠️</div>
+      <div><div class="v-title">USE SPARINGLY — CAUTION</div>
+      <div class="v-sub">Contains ${f2.length} generally unhealthy ingredient${f2.length>1?'s':''}. Reduce or avoid consumption.</div></div></div>`;
+  } else if (tokens.length) {
+    html += `<div class="verdict safe"><div class="v-ico">✅</div>
+      <div><div class="v-title">LOOKS SAFE</div>
+      <div class="v-sub">No banned or flagged substances detected in this product.</div></div></div>`;
+  } else {
+    html += `<div class="no-res"><span style="font-size:32px;display:block;margin-bottom:12px">🔍</span>Not enough text detected. Try scanning again with better lighting, or use manual input below.</div>`;
+  }
+
+  // Ingredient chips
+  if (tokens.length) {
+    const chips = tokens.map(t=>{
+      const tl=t.toLowerCase();
+      const is1=f1.some(x=>x.s.aliases.some(a=>tl.includes(a)));
+      const is2=f2.some(x=>x.s.aliases.some(a=>tl.includes(a)));
+      return `<span class="chip${is1?' h1':is2?' h2':''}">${t}</span>`;
+    }).join('');
+    html += `<div class="sec-lbl">Detected Ingredients</div>
+    <div class="legend">
+      <div class="li"><div class="ldot r"></div>Banned</div>
+      <div class="li"><div class="ldot y"></div>Unhealthy</div>
+      <div class="li"><div class="ldot g"></div>Safe</div>
+    </div>
+    <div class="chips">${chips}</div>`;
+  }
+
+  // Category 1 cards
+  if (f1.length) {
+    html += `<div class="sec-lbl">⛔ Banned / Restricted Substances</div>`;
+    f1.forEach(({s})=>{
+      html += `<div class="hcard c1">
+        <div class="h-name">${s.name}</div>
+        <div class="h-meta">${s.agency||''}</div>
+        <div class="h-desc">${s.desc}</div>
+        <div><span class="hbadge ${s.status==='BANNED'?'ban':'res'}">${s.status==='BANNED'?'🚫':'⚠️'} ${s.status} — ${s.agency}</span></div>
+        <div class="h-desc" style="margin-top:4px;font-size:11px;color:var(--muted)">${s.details||''}</div>
+      </div>`;
+    });
+  }
+
+  // Category 2 cards
+  if (f2.length) {
+    html += `<div class="sec-lbl">⚠️ Generally Unhealthy Ingredients</div>`;
+    f2.forEach(({s})=>{
+      html += `<div class="hcard c2">
+        <div class="h-name">${s.name}</div>
+        <div class="h-desc">${s.desc}</div>
+        <div class="h-desc" style="margin-top:6px;font-size:11px;color:var(--muted)">🩺 ${s.health||''}</div>
+      </div>`;
+    });
+  }
+
+  // Alternatives
+  if (f1.length + f2.length > 0) {
+    const alts = [...f1,...f2].map(x=>ALTS[x.s.name]).filter(Boolean)
+      .filter((a,i,arr)=>arr.findIndex(b=>b.name===a.name)===i);
+    if (!alts.length) alts.push(
+      {emoji:'🥗',name:'Whole / Minimally Processed Foods',desc:'Products with fewer than 5 ingredients, all of which you recognise, are generally the safest choices.'},
+      {emoji:'🌱',name:'Certified Organic Products',desc:'Organic certification restricts most synthetic additives, preservatives and artificial dyes.'}
+    );
+    html += `<div class="sec-lbl">💚 Healthier Alternatives</div><div class="alt-grid">`;
+    alts.forEach(a=>{
+      html += `<div class="alt-card"><div class="alt-em">${a.emoji}</div>
+        <div><div class="alt-name">${a.name}</div><div class="alt-desc">${a.desc}</div></div></div>`;
+    });
+    html += `</div>`;
+  } else if (tokens.length) {
+    html += `<div class="safe-wrap"><div style="font-size:40px">🎉</div>
+      <p style="font-size:13px;color:var(--dim);margin-top:8px;line-height:1.6">Great news! No harmful substances were detected. This product appears free from banned additives and flagged ingredients in our database.</p>
+    </div>`;
+  }
+
+  // Source attribution
+  html += `<div class="src-panel"><div class="src-title">📡 Database Sources</div>
+    <div class="src-item"><div class="src-dot"></div>World Health Organization (WHO)</div>
+    <div class="src-item"><div class="src-dot"></div>European Food Safety Authority (EFSA)</div>
+    <div class="src-item"><div class="src-dot"></div>US Food & Drug Administration (FDA)</div>
+    <div class="src-item"><div class="src-dot"></div>OpenFoodFacts Additives Taxonomy (aggregated)</div>
+    ${DB.lastUpdated ? `<div class="src-item" style="color:var(--muted)"><div class="src-dot" style="background:var(--muted)"></div>Last synced: ${fmtDate(DB.lastUpdated)}</div>` : '<div class="src-item" style="color:var(--muted)"><div class="src-dot" style="background:var(--muted)"></div>Using built-in offline database</div>'}
+  </div>`;
+
+  document.getElementById('resCont').innerHTML = html;
+  showScreen('results');
+}
+
+// ═══════════════════════════════════════════════════════════
+//  CAMERA & TORCH
+// ═══════════════════════════════════════════════════════════
+let stream=null, vTrack=null, torchOn=false, torchOK=false;
+
+async function startScan() {
+  showScreen('scan');
+  torchOn = false;
+  const tb = document.getElementById('torchBtn');
+  const tl = document.getElementById('torchLbl');
+  tb.classList.remove('on','unavail');
+  tb.textContent = '🔦';
+  tl.textContent = 'TORCH'; tl.classList.remove('on');
+
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({
+      video:{ facingMode:'environment', width:{ideal:1920}, height:{ideal:1080} }, audio:false
+    });
+    const video = document.getElementById('video');
+    video.srcObject = stream; video.play();
+    vTrack = stream.getVideoTracks()[0];
+
+    // Detect torch support
+    const caps = vTrack.getCapabilities ? vTrack.getCapabilities() : {};
+    torchOK = !!caps.torch;
+    if (!torchOK) { tb.classList.add('unavail'); tb.title = 'Torch not available on this device'; }
+    else { tb.title = 'Tap to toggle torch / flashlight'; }
+  } catch(e) {
+    showToast('Camera access denied. Allow camera permission in your browser settings, or use manual input.');
+    showScreen('manual');
+  }
+}
+
+async function toggleTorch() {
+  if (!vTrack) return;
+  if (!torchOK) { showToast('Torch is not available on this device or browser.'); return; }
+  torchOn = !torchOn;
+  try {
+    await vTrack.applyConstraints({ advanced:[{ torch: torchOn }] });
+    const tb = document.getElementById('torchBtn');
+    const tl = document.getElementById('torchLbl');
+    if (torchOn) {
+      tb.classList.add('on'); tb.textContent = '💡';
+      tl.textContent = 'ON'; tl.classList.add('on');
+    } else {
+      tb.classList.remove('on'); tb.textContent = '🔦';
+      tl.textContent = 'TORCH'; tl.classList.remove('on');
+    }
+  } catch(e) {
+    torchOn = !torchOn;
+    showToast('Could not toggle torch. Your device or browser may not support this.');
+  }
+}
+
+function stopCamera() {
+  if (stream) { stream.getTracks().forEach(t=>t.stop()); stream=null; }
+  torchOn=false; vTrack=null; torchOK=false;
+}
+
+async function capturePhoto() {
+  const video = document.getElementById('video');
+  const canvas = document.getElementById('canvas');
+  canvas.width = video.videoWidth||1280; canvas.height = video.videoHeight||720;
+  canvas.getContext('2d').drawImage(video,0,0);
+  stopCamera();
+  showScreen('processing');
+  await runOCR(canvas);
+}
+
+// ═══════════════════════════════════════════════════════════
+//  OCR — Tesseract.js (runs locally, offline after first load)
+// ═══════════════════════════════════════════════════════════
+async function runOCR(canvas) {
+  const setP = (msg,pct) => { document.getElementById('procSt').textContent=msg; document.getElementById('procBar').style.width=pct+'%'; };
+  try {
+    setP('Loading OCR engine…',10);
+    const worker = await Tesseract.createWorker('eng',1,{
+      logger: m => {
+        if(m.status==='loading tesseract core') setP('Loading OCR core…',15);
+        else if(m.status==='initializing tesseract') setP('Initialising…',22);
+        else if(m.status==='loading language traineddata') setP('Loading language data…',32);
+        else if(m.status==='recognizing text') setP('Reading text…', Math.round(32+m.progress*58));
+      }
+    });
+    const {data:{text}} = await worker.recognize(canvas);
+    await worker.terminate();
+    setP('Checking against database…',95);
+    await sleep(400); setP('Done!',100); await sleep(300);
+    renderResults(text);
+  } catch(e) {
+    showToast('OCR failed. Try better lighting, hold the camera steady, or use manual input.');
+    showScreen('home');
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+//  NAVIGATION & HELPERS
+// ═══════════════════════════════════════════════════════════
+function showScreen(id) { document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active')); document.getElementById(id).classList.add('active'); }
+function goHome() { stopCamera(); showScreen('home'); }
+function showManual() { stopCamera(); showScreen('manual'); }
+function analyzeManual() {
+  const t = document.getElementById('manInput').value.trim();
+  if (!t) { showToast('Please enter the ingredients list first.'); return; }
+  renderResults(t);
+}
+
+function showToast(msg) {
+  const ex = document.querySelector('.toast'); if(ex) ex.remove();
+  const t = document.createElement('div'); t.className='toast'; t.textContent=msg;
+  document.body.appendChild(t); setTimeout(()=>t.remove(),3300);
+}
+function sleep(ms) { return new Promise(r=>setTimeout(r,ms)); }
+function fmtDate(iso) { try{ return new Date(iso).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}); }catch(e){return iso;} }
+
+function updateStats() {
+  document.getElementById('sB').textContent = DB.cat1.length + '+';
+  document.getElementById('sU').textContent = DB.cat2.length + '+';
+}
+function refreshUpdPanel() {
+  if (!DB.lastUpdated) return;
+  document.getElementById('updIco').textContent = '✅';
+  document.getElementById('updTitle').textContent = 'Database Up to Date';
+  document.getElementById('updSub').textContent = `Last synced: ${fmtDate(DB.lastUpdated)} · ${DB.cat1.length+DB.cat2.length} substances tracked`;
+  document.getElementById('updBtn').textContent = 'REFRESH';
+  document.getElementById('connPill').textContent='DB LIVE ✓'; document.getElementById('connPill').className='pill ok';
+}
+
+// Auto-update once per day silently in background
+function autoUpdate() {
+  if (!navigator.onLine || !DB.lastUpdated) return;
+  if ((Date.now()-new Date(DB.lastUpdated).getTime()) > 86400000) setTimeout(doUpdate,4000);
+}
+
+// Online/offline indicator
+window.addEventListener('online',()=>{ if(!DB.lastUpdated){document.getElementById('connPill').textContent='ONLINE — SYNC NOW';document.getElementById('connPill').className='pill upd';} });
+window.addEventListener('offline',()=>{ document.getElementById('connPill').textContent='OFFLINE DB ✓';document.getElementById('connPill').className='pill ok'; });
+
+// ═══════════════════════════════════════════════════════════
+//  PWA SERVICE WORKER
+// ═══════════════════════════════════════════════════════════
+if ('serviceWorker' in navigator) {
+  const sw = `const C='fg-v2';
+self.addEventListener('install',e=>e.waitUntil(caches.open(C).then(c=>c.addAll(['https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js']).catch(()=>{}))));
+self.addEventListener('fetch',e=>e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request).then(res=>{const cl=res.clone();caches.open(C).then(c=>c.put(e.request,cl));return res;}).catch(()=>caches.match(e.request)))));`;
+  navigator.serviceWorker.register(URL.createObjectURL(new Blob([sw],{type:'application/javascript'}))).catch(()=>{});
+}
+
+// ═══════════════════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════════════════
+loadDB(); updateStats(); refreshUpdPanel(); autoUpdate();
+</script>
+</body>
+</html>
